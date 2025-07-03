@@ -2,11 +2,15 @@ import Foundation
 import AVFoundation
 import os
 
-#if canImport(Speech)
+// Check for availability of new Speech APIs (macOS 26+ / iOS 26+)
+#if canImport(Speech) && swift(>=6.0)
 import Speech
-#endif
 
-/// Transcription service that leverages the new SpeechAnalyzer / SpeechTranscriber API available on macOS 26 (Tahoe).
+// Check if the new SpeechTranscriber API is available at compile time
+// This is a more precise check than just Swift version
+#if hasSymbol(SpeechTranscriber)
+
+/// Transcription service that leverages the new SpeechAnalyzer / SpeechTranscriber API available on macOS 26+ (Tahoe).
 /// Falls back with an unsupported-provider error on earlier OS versions so the application can gracefully degrade.
 class NativeAppleTranscriptionService: TranscriptionService {
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "NativeAppleTranscriptionService")
@@ -15,7 +19,7 @@ class NativeAppleTranscriptionService: TranscriptionService {
     private func mapToAppleLocale(_ simpleCode: String) -> String {
         let mapping = [
             "en": "en-US",
-            "es": "es-ES", 
+            "es": "es-ES",
             "fr": "fr-FR",
             "de": "de-DE",
             "ar": "ar-SA",
@@ -39,7 +43,7 @@ class NativeAppleTranscriptionService: TranscriptionService {
         var errorDescription: String? {
             switch self {
             case .unsupportedOS:
-                return "SpeechAnalyzer requires macOS 26 or later."
+                return "SpeechAnalyzer requires macOS 26+ or iOS 26+."
             case .transcriptionFailed:
                 return "Transcription failed using SpeechAnalyzer."
             case .localeNotSupported:
@@ -57,12 +61,11 @@ class NativeAppleTranscriptionService: TranscriptionService {
             throw ServiceError.invalidModel
         }
         
-        guard #available(macOS 26, *) else {
-            logger.error("SpeechAnalyzer is not available on this macOS version")
+        guard #available(macOS 26, iOS 26, *) else {
+            logger.error("SpeechAnalyzer is not available on this OS version")
             throw ServiceError.unsupportedOS
         }
         
-        #if canImport(Speech)
         logger.notice("Starting Apple native transcription with SpeechAnalyzer.")
         
         let audioFile = try AVAudioFile(forReading: audioURL)
@@ -138,27 +141,19 @@ class NativeAppleTranscriptionService: TranscriptionService {
         
         logger.notice("Native transcription successful. Length: \(finalTranscription.count) characters.")
         return finalTranscription
-        
-        #else
-        logger.error("Speech framework is not available")
-        throw ServiceError.unsupportedOS
-        #endif
     }
     
-    @available(macOS 26, *)
+    @available(macOS 26, iOS 26, *)
     private func deallocateExistingAssets() async throws {
-        #if canImport(Speech)
         // Deallocate any existing allocated locales to avoid conflicts
         for locale in await AssetInventory.allocatedLocales {
             await AssetInventory.deallocate(locale: locale)
         }
         logger.notice("Deallocated existing asset locales.")
-        #endif
     }
     
-    @available(macOS 26, *)
+    @available(macOS 26, iOS 26, *)
     private func allocateAssetsForLocale(_ locale: Locale) async throws {
-        #if canImport(Speech)
         do {
             try await AssetInventory.allocate(locale: locale)
             logger.notice("Successfully allocated assets for locale: '\(locale.identifier(.bcp47))'")
@@ -166,12 +161,10 @@ class NativeAppleTranscriptionService: TranscriptionService {
             logger.error("Failed to allocate assets for locale '\(locale.identifier(.bcp47))': \(error.localizedDescription)")
             throw ServiceError.assetAllocationFailed
         }
-        #endif
     }
     
-    @available(macOS 26, *)
+    @available(macOS 26, iOS 26, *)
     private func ensureModelIsAvailable(for transcriber: SpeechTranscriber, locale: Locale) async throws {
-        #if canImport(Speech)
         let installedLocales = await SpeechTranscriber.installedLocales
         let isInstalled = installedLocales.map({ $0.identifier(.bcp47) }).contains(locale.identifier(.bcp47))
 
@@ -186,6 +179,63 @@ class NativeAppleTranscriptionService: TranscriptionService {
                 // Note: We don't throw an error here, as transcription might still work with a base model.
             }
         }
-        #endif
     }
-} 
+}
+
+#else
+// -----------------------------------------------------------------------------
+// Fallback when SpeechTranscriber symbol is not available (current Xcode versions)
+// -----------------------------------------------------------------------------
+
+/// Fallback implementation when SpeechTranscriber APIs are not available at compile time.
+/// Simply throws an error but conforms to TranscriptionService so the rest of the project compiles.
+class NativeAppleTranscriptionService: TranscriptionService {
+    private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "NativeAppleTranscriptionService")
+    
+    enum ServiceError: Error, LocalizedError {
+        case unsupportedCompiler
+        
+        var errorDescription: String? {
+            switch self {
+            case .unsupportedCompiler:
+                return "SpeechTranscriber APIs require future Xcode versions with macOS 26+ SDK."
+            }
+        }
+    }
+    
+    func transcribe(audioURL: URL, model: any TranscriptionModel) async throws -> String {
+        logger.info("SpeechTranscriber APIs not available at compile time - using fallback error")
+        throw ServiceError.unsupportedCompiler
+    }
+}
+
+#endif
+
+#else
+// -----------------------------------------------------------------------------
+// Fallback for older Swift versions or when Speech framework is unavailable
+// -----------------------------------------------------------------------------
+
+/// Fallback implementation for environments where the new Speech APIs are not available.
+/// Simply throws an error but conforms to TranscriptionService so the rest of the project compiles.
+class NativeAppleTranscriptionService: TranscriptionService {
+    private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "NativeAppleTranscriptionService")
+    
+    enum ServiceError: Error, LocalizedError {
+        case unsupportedEnvironment
+        
+        var errorDescription: String? {
+            switch self {
+            case .unsupportedEnvironment:
+                return "Native Apple transcription requires newer Swift and macOS versions."
+            }
+        }
+    }
+    
+    func transcribe(audioURL: URL, model: any TranscriptionModel) async throws -> String {
+        logger.info("NativeAppleTranscriptionService unavailable - older environment")
+        throw ServiceError.unsupportedEnvironment
+    }
+}
+
+#endif 

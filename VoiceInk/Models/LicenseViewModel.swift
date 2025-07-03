@@ -33,40 +33,15 @@ class LicenseViewModel: ObservableObject {
     }
     
     private func loadLicenseState() {
-        // Check for existing license key
-        if let licenseKey = userDefaults.licenseKey {
-            self.licenseKey = licenseKey
-            
-            // If we have a license key, trust that it's licensed
-            // Skip server validation on startup
-            if userDefaults.activationId != nil || !userDefaults.bool(forKey: "VoiceInkLicenseRequiresActivation") {
-                licenseState = .licensed
-                return
-            }
-        }
+        // 🔓 Force mode licence pro à vie
+        licenseState = .licensed
+        licenseKey = "LIFETIME-PATCHED"
+        validationMessage = "Licence activée à vie (patché)"
         
-        // Check if this is first launch
-        let hasLaunchedBefore = userDefaults.bool(forKey: "VoiceInkHasLaunchedBefore")
-        if !hasLaunchedBefore {
-            // First launch - start trial automatically
-            userDefaults.set(true, forKey: "VoiceInkHasLaunchedBefore")
-            startTrial()
-            return
-        }
-        
-        // Only check trial if not licensed and not first launch
-        if let trialStartDate = userDefaults.trialStartDate {
-            let daysSinceTrialStart = Calendar.current.dateComponents([.day], from: trialStartDate, to: Date()).day ?? 0
-            
-            if daysSinceTrialStart >= trialPeriodDays {
-                licenseState = .trialExpired
-            } else {
-                licenseState = .trial(daysRemaining: trialPeriodDays - daysSinceTrialStart)
-            }
-        } else {
-            // No trial has been started yet - start it now
-            startTrial()
-        }
+        // Set the userDefaults to mark as licensed
+        userDefaults.licenseKey = "LIFETIME-PATCHED"
+        userDefaults.set(true, forKey: "VoiceInkHasLaunchedBefore")
+        userDefaults.set(false, forKey: "VoiceInkLicenseRequiresActivation")
     }
     
     var canUseApp: Bool {
@@ -85,77 +60,22 @@ class LicenseViewModel: ObservableObject {
     }
     
     func validateLicense() async {
-        guard !licenseKey.isEmpty else {
-            validationMessage = "Please enter a license key"
-            return
-        }
-        
+        // 🔓 Bypass validation - force success
         isValidating = true
         
-        do {
-            // First, check if the license is valid and if it requires activation
-            let licenseCheck = try await polarService.checkLicenseRequiresActivation(licenseKey)
-            
-            if !licenseCheck.isValid {
-                validationMessage = "Invalid license key"
-                isValidating = false
-                return
-            }
-            
-            // Store the license key
-            userDefaults.licenseKey = licenseKey
-            
-            // Handle based on whether activation is required
-            if licenseCheck.requiresActivation {
-                // If we already have an activation ID, validate with it
-                if let activationId = userDefaults.activationId {
-                    let isValid = try await polarService.validateLicenseKeyWithActivation(licenseKey, activationId: activationId)
-                    if isValid {
-                        // Existing activation is valid
-                        licenseState = .licensed
-                        validationMessage = "License activated successfully!"
-                        NotificationCenter.default.post(name: .licenseStatusChanged, object: nil)
-                        isValidating = false
-                        return
-                    }
-                }
-                
-                // Need to create a new activation
-                let (activationId, limit) = try await polarService.activateLicenseKey(licenseKey)
-                
-                // Store activation details
-                userDefaults.activationId = activationId
-                userDefaults.set(true, forKey: "VoiceInkLicenseRequiresActivation")
-                self.activationsLimit = limit
-                
-            } else {
-                // This license doesn't require activation (unlimited devices)
-                userDefaults.activationId = nil
-                userDefaults.set(false, forKey: "VoiceInkLicenseRequiresActivation")
-                self.activationsLimit = licenseCheck.activationsLimit ?? 0
-            }
-            
-            // Update the license state
-            licenseState = .licensed
-            validationMessage = "License activated successfully!"
-            NotificationCenter.default.post(name: .licenseStatusChanged, object: nil)
-            
-        } catch LicenseError.activationLimitReached {
-            validationMessage = "This license has reached its maximum number of activations."
-        } catch LicenseError.activationNotRequired {
-            // This is actually a success case for unlimited licenses
-            userDefaults.licenseKey = licenseKey
-            userDefaults.activationId = nil
-            userDefaults.set(false, forKey: "VoiceInkLicenseRequiresActivation")
-            self.activationsLimit = 0
-            
-            licenseState = .licensed
-            validationMessage = "License activated successfully!"
-            NotificationCenter.default.post(name: .licenseStatusChanged, object: nil)
-        } catch {
-            validationMessage = "Error validating license: \(error.localizedDescription)"
-        }
+        // Brief delay to make it look like we're validating
+        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
         
+        licenseState = .licensed
+        licenseKey = "LIFETIME-PATCHED"
+        validationMessage = "Licence validée localement (patch)"
+        
+        // Set the userDefaults to mark as licensed
+        userDefaults.licenseKey = "LIFETIME-PATCHED"
+        userDefaults.set(false, forKey: "VoiceInkLicenseRequiresActivation")
+        userDefaults.activationId = nil
+        
+        NotificationCenter.default.post(name: .licenseStatusChanged, object: nil)
         isValidating = false
     }
     
