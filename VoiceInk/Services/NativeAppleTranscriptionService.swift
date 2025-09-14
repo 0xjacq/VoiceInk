@@ -148,7 +148,7 @@ class NativeAppleTranscriptionService: TranscriptionService {
     // Forward-compatibility: Use Any here because SpeechTranscriber is only available in future macOS SDKs.
     // This avoids referencing an unavailable SDK symbol while keeping the method shape for later adoption.
     @available(macOS 26, *)
-    private func ensureModelIsAvailable(for transcriber: SpeechTranscriber, locale: Locale) async throws {
+    private func ensureModelIsAvailable(for transcriber: Any, locale: Locale) async throws {
         #if canImport(Speech) && ENABLE_NATIVE_SPEECH_ANALYZER
         let installedLocales = await SpeechTranscriber.installedLocales
         let isInstalled = installedLocales.map({ $0.identifier(.bcp47) }).contains(locale.identifier(.bcp47))
@@ -156,12 +156,12 @@ class NativeAppleTranscriptionService: TranscriptionService {
         if !isInstalled {
             logger.notice("Assets for '\(locale.identifier(.bcp47))' not installed. Requesting system download.")
             
-            if let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) {
+            if let t = transcriber as? SpeechTranscriber,
+               let request = try await AssetInventory.assetInstallationRequest(supporting: [t]) {
                 try await request.downloadAndInstall()
                 logger.notice("Asset download for '\(locale.identifier(.bcp47))' complete.")
             } else {
-                logger.error("Asset download for '\(locale.identifier(.bcp47))' failed: Could not create installation request.")
-                // Note: We don't throw an error here, as transcription might still work with a base model.
+                logger.error("Asset installation request could not be created: invalid transcriber type.")
             }
         }
         #endif

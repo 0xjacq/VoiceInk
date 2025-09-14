@@ -1,22 +1,13 @@
 {
-  "originHash" : "93572b72309723585f9fa623350a6b09a152df9dec03f14a5b938629e0f677a0",
+  "originHash" : "cd20ae9293421d708cbc10e103824cb01a0af404c237369ebae9094d06435077",
   "pins" : [
-    {
-      "identity" : "axswift",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/tisfeng/AXSwift.git",
-      "state" : {
-        "revision" : "2efa201fa18184de98674165592fd1ecb0c00a6d",
-        "version" : "0.3.6"
-      }
-    },
     {
       "identity" : "fluidaudio",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/FluidInference/FluidAudio",
+      "location" : "https://github.com/FluidInference/FluidAudio.git",
       "state" : {
         "branch" : "main",
-        "revision" : "ddee663c4a9806d4f139943b0978b0f0a961587b"
+        "revision" : "245880345a7885eb8e0d2efa38dc6c29f4200006"
       }
     },
     {
@@ -24,17 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/sindresorhus/KeyboardShortcuts",
       "state" : {
-        "revision" : "1aef85578fdd4f9eaeeb8d53b7b4fc31bf08fe27",
-        "version" : "2.4.0"
-      }
-    },
-    {
-      "identity" : "keysender",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/jordanbaird/KeySender",
-      "state" : {
-        "revision" : "99584bf1a03ab600cc44be89a2dcd98b2dbeb9de",
-        "version" : "0.0.5"
+        "revision" : "045cf174010beb335fa1d2567d18c057b8787165",
+        "version" : "2.3.0"
       }
     },
     {
@@ -49,19 +31,10 @@
     {
       "identity" : "mediaremote-adapter",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/ejbills/mediaremote-adapter",
+      "location" : "https://github.com/ejbills/mediaremote-adapter.git",
       "state" : {
         "branch" : "master",
         "revision" : "3529aa25023082a2ceadebcd2c9c4a9430ee96b9"
-      }
-    },
-    {
-      "identity" : "selectedtextkit",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/tisfeng/SelectedTextKit",
-      "state" : {
-        "revision" : "ecbf46d8be541b54296a0836b7ae2f60c0416b72",
-        "version" : "2.6.2"
       }
     },
     {
@@ -69,23 +42,14 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/sparkle-project/Sparkle",
       "state" : {
-        "revision" : "9a1d2a19d3595fcf8d9c447173f9a1687b3dcadb",
-        "version" : "2.8.0"
+        "revision" : "df074165274afaa39539c05d57b0832620775b11",
+        "version" : "2.7.1"
       }
     },
     {
-      "identity" : "swift-atomics",
+      "identity" : "zip?tab=readme-ov-file",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-atomics.git",
-      "state" : {
-        "revision" : "b601256eab081c0f92f059e12818ac1d4f178ff7",
-        "version" : "1.3.0"
-      }
-    },
-    {
-      "identity" : "zip",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/marmelroy/Zip",
+      "location" : "https://github.com/marmelroy/Zip?tab=readme-ov-file",
       "state" : {
         "revision" : "67fa55813b9e7b3b9acee9c0ae501def28746d76",
         "version" : "2.1.2"

@@ -292,12 +292,15 @@ struct VoiceInkApp: App {
                 .environmentObject(aiService)
                 .environmentObject(enhancementService)
         } label: {
+            // Load custom menu bar icon if present; otherwise fall back to a system symbol to avoid crashes
+            let baseImage: NSImage = NSImage(named: "menuBarIcon")
+                ?? NSImage(systemSymbolName: "waveform", accessibilityDescription: "VoiceInk")!
             let image: NSImage = {
-                let ratio = $0.size.height / $0.size.width
+                let ratio = $0.size.height / max($0.size.width, 1)
                 $0.size.height = 22
                 $0.size.width = 22 / ratio
                 return $0
-            }(NSImage(named: "menuBarIcon")!)
+            }(baseImage)
 
             Image(nsImage: image)
         }
@@ -316,33 +319,46 @@ struct VoiceInkApp: App {
 class UpdaterViewModel: ObservableObject {
     @AppStorage("autoUpdateCheck") private var autoUpdateCheck = true
     
-    private let updaterController: SPUStandardUpdaterController
+    private let updaterController: SPUStandardUpdaterController?
     
     @Published var canCheckForUpdates = false
     
     init() {
-        updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
-        
+        // If the bundle lacks identifier or version keys, disable Sparkle gracefully
+        let bundle = Bundle.main
+        let hasBundleID = bundle.bundleIdentifier != nil
+        let hasBuild = bundle.object(forInfoDictionaryKey: "CFBundleVersion") != nil
+        let hasVersion = bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") != nil
+
+        guard hasBundleID && hasBuild && hasVersion else {
+            print("[Updater] Disabled: missing bundle identifier or version keys (check target's Info settings).")
+            self.updaterController = nil
+            self.canCheckForUpdates = false
+            return
+        }
+
+        let controller = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
+        self.updaterController = controller
+
         // Enable automatic update checking
-        updaterController.updater.automaticallyChecksForUpdates = autoUpdateCheck
-        updaterController.updater.updateCheckInterval = 24 * 60 * 60
-        
-        updaterController.updater.publisher(for: \.canCheckForUpdates)
+        controller.updater.automaticallyChecksForUpdates = autoUpdateCheck
+        controller.updater.updateCheckInterval = 24 * 60 * 60
+
+        controller.updater.publisher(for: \.canCheckForUpdates)
             .assign(to: &$canCheckForUpdates)
     }
     
     func toggleAutoUpdates(_ value: Bool) {
-        updaterController.updater.automaticallyChecksForUpdates = value
+        guard let updater = updaterController?.updater else { return }
+        updater.automaticallyChecksForUpdates = value
     }
     
     func checkForUpdates() {
-        // This is for manual checks - will show UI
-        updaterController.checkForUpdates(nil)
+        updaterController?.checkForUpdates(nil)
     }
     
     func silentlyCheckForUpdates() {
-        // This checks for updates in the background without showing UI unless an update is found
-        updaterController.updater.checkForUpdatesInBackground()
+        updaterController?.updater.checkForUpdatesInBackground()
     }
 }
 
